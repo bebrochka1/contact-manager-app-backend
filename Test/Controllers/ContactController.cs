@@ -40,9 +40,9 @@ namespace Test.Controllers
         {
             if (contact != null) 
             {
-                var validationResults = await _validator.ValidateAsync(contact);
+                var validationResult = await _validator.ValidateAsync(contact);
 
-                if (validationResults.IsValid) 
+                if (validationResult.IsValid) 
                 {
                     await _contactRepository.Update(Id, contact);
                     await _contactRepository.Save();
@@ -50,7 +50,19 @@ namespace Test.Controllers
                 }
                 else
                 {
-                    return BadRequest($"Contact to update is not valid {JsonSerializer.Serialize(validationResults.Errors.ToList())}");
+                    var errors = validationResult.Errors
+                        .GroupBy(e => e.PropertyName)
+                        .ToDictionary(
+                        g => g.Key,
+                        g => g.Select(e => e.ErrorMessage).ToArray()
+                        );
+
+                    return ValidationProblem(new ValidationProblemDetails
+                    {
+                        Title = "Validation failed",
+                        Status = StatusCodes.Status400BadRequest,
+                        Errors = errors
+                    });
                 }
             }
 
@@ -85,7 +97,6 @@ namespace Test.Controllers
                                     Phone = values[3].Trim('"'),
                                     Salary = decimal.Parse(values[4].Trim('"'))
                                 };
-                                Console.WriteLine("New contact added: " + contact.ToString());
 
                                 var validationResult = await _validator.ValidateAsync(contact);
 
@@ -95,13 +106,19 @@ namespace Test.Controllers
                                 }
                                 else
                                 {
-                                    Console.WriteLine($"Error request invalid contact {contact.ToString()}");
-                                    Console.WriteLine($"Error request invalid data");
-                                    foreach(var error in validationResult.Errors)
+                                    var errors = validationResult.Errors
+                                        .GroupBy(e => e.PropertyName)
+                                        .ToDictionary(
+                                        g => g.Key,
+                                        g => g.Select(e => e.ErrorMessage).ToArray()
+                                        );
+
+                                    return ValidationProblem(new ValidationProblemDetails
                                     {
-                                        Console.WriteLine(error.ToString());
-                                    }
-                                    return BadRequest($"Contact with phone number {contact.Phone} is not valid: {validationResult.Errors.ToList()}");
+                                        Title = "Validation failed",
+                                        Status = StatusCodes.Status400BadRequest,
+                                        Errors = errors
+                                    });
                                 }
                             }
                         }
