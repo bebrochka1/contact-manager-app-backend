@@ -1,6 +1,7 @@
 ﻿using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using System.Globalization;
+using System.Text.Json;
 using Test.Abstractions;
 using Test.Data.Models;
 using Test.Data.Repositories;
@@ -39,9 +40,18 @@ namespace Test.Controllers
         {
             if (contact != null) 
             {
-                await _contactRepository.Update(Id, contact);
-                await _contactRepository.Save();
-                return Ok();
+                var validationResults = await _validator.ValidateAsync(contact);
+
+                if (validationResults.IsValid) 
+                {
+                    await _contactRepository.Update(Id, contact);
+                    await _contactRepository.Save();
+                    return Ok();
+                }
+                else
+                {
+                    return BadRequest($"Contact to update is not valid {JsonSerializer.Serialize(validationResults.Errors.ToList())}");
+                }
             }
 
             return BadRequest($"No data provided");
@@ -58,39 +68,53 @@ namespace Test.Controllers
                 {
                     var csvData = await reader.ReadToEndAsync();
                     var lines = csvData.Split('\n');
-                    foreach (var line in lines)
+                    if(lines.Length < 100000)
                     {
-                        Console.WriteLine(line);
-                        var values = line.Split(',');
-
-                        if (values.Length == 5)
+                        foreach (var line in lines)
                         {
-                            var contact = new Contact
-                            {
-                                Name = values[0].Trim('"'),
-                                DateOfBirth = DateTime.ParseExact(values[1].Trim('"'), "dd.MM.yyyy", CultureInfo.InvariantCulture),
-                                Married = bool.Parse(values[2].Trim('"')),
-                                Phone = values[3].Trim('"'),
-                                Salary = decimal.Parse(values[4].Trim('"'))
-                            };
-                            Console.WriteLine("New contact added: " + contact.ToString());
+                            Console.WriteLine(line);
+                            var values = line.Split(',');
 
-                            var validationResult = await _validator.ValidateAsync(contact);
+                            if (values.Length == 5)
+                            {
+                                var contact = new Contact
+                                {
+                                    Name = values[0].Trim('"'),
+                                    DateOfBirth = DateTime.ParseExact(values[1].Trim('"'), "dd.MM.yyyy", CultureInfo.InvariantCulture),
+                                    Married = bool.Parse(values[2].Trim('"')),
+                                    Phone = values[3].Trim('"'),
+                                    Salary = decimal.Parse(values[4].Trim('"'))
+                                };
+                                Console.WriteLine("New contact added: " + contact.ToString());
 
-                            if(validationResult.IsValid)
-                            {
-                                await _contactRepository.Add(contact);
-                            }
-                            else
-                            {
-                                return BadRequest(validationResult.Errors);
+                                var validationResult = await _validator.ValidateAsync(contact);
+
+                                if (validationResult.IsValid)
+                                {
+                                    await _contactRepository.Add(contact);
+                                }
+                                else
+                                {
+                                    Console.WriteLine($"Error request invalid contact {contact.ToString()}");
+                                    Console.WriteLine($"Error request invalid data");
+                                    foreach(var error in validationResult.Errors)
+                                    {
+                                        Console.WriteLine(error.ToString());
+                                    }
+                                    return BadRequest($"Contact with phone number {contact.Phone} is not valid: {validationResult.Errors.ToList()}");
+                                }
                             }
                         }
+                        await _contactRepository.Save();
+                        return Ok("File uploaded successfully");
                     }
-                    await _contactRepository.Save();
+                    else
+                    {
+                        Console.WriteLine("File is in incorrect format");
+                        return BadRequest("File should contain be less than 100000 contacts and it's can't be empty");
+                    }
                 }
-                Console.WriteLine("File uploaded");
-                return Ok("File uploaded successfully");
+                
             }
             else
             {

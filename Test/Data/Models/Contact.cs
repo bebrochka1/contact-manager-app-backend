@@ -2,7 +2,7 @@
 {
     public class Contact
     {
-        public Guid Id { get; set; }
+        public Guid Id { get; set; } = Guid.NewGuid();
         public string Name { get; set; } = string.Empty;
         public DateTime DateOfBirth { get; set; }
         public bool Married { get; set; }
@@ -11,7 +11,7 @@
 
         public override string? ToString()
         {
-            return base.ToString();
+            return $"ID: {Id} Name: {Name} Date of Birth {DateOfBirth} Married {Married} Phone {Phone} Salary {Salary}";
         }
     }
 }

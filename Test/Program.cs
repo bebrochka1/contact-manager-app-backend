@@ -2,6 +2,7 @@ using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Test.Abstractions;
 using Test.Data;
+using Test.Data.Models;
 using Test.Data.Repositories;
 using Test.Data.Validators;
 
@@ -29,7 +30,7 @@ builder.Services.AddScoped<IContactRepository, ContactRepository>();
 
 builder.Services.AddControllers();
 
-builder.Services.AddScoped<IValidator, ContactValidator>();
+builder.Services.AddScoped<IValidator<Contact>, ContactValidator>();
 
 var app = builder.Build();
 
