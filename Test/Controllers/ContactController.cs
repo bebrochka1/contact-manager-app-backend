@@ -127,7 +127,6 @@ namespace Test.Controllers
                     }
                     else
                     {
-                        Console.WriteLine("File is in incorrect format");
                         return BadRequest("File should contain be less than 100000 contacts and it's can't be empty");
                     }
                 }
